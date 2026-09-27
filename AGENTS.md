@@ -28,5 +28,7 @@
 
 - 开始前查看 `git status --short` 和相关文件的历史/差异；区分任务改动与已有改动，保留他人的工作。仓库目前有已跟踪的 `.venv/` 和生成物，`.gitignore` 不会自动取消对它们的跟踪。
 - 保持改动聚焦且可审查；不要为本任务以外的问题批量格式化、更新依赖或清理工作区。提交前运行适用的测试，并用 `git diff --check` 检查空白问题。
-- 只有用户明确要求提交时才提交；用 `git add -- <本次修改的路径>` 精确暂存，避免 `git add .` / `git add -A`。提交前核对 `git diff --cached --stat` 与 `git diff --cached`，确保仅包含本任务文件；提交信息用清晰的祈使句，沿用现有的 `feat:` 等前缀风格（适用时）。
+- 完成并验证任务后，按最小的独立逻辑改动提交：一个 commit 只包含一项变更所需的代码、测试和文档；不要混入无关修改，也不要为凑数量拆分不可独立运行的改动。若用户明确要求不提交，则不提交。
+- 用 `git add -- <本次修改的路径>` 精确暂存，避免 `git add .` / `git add -A`。提交前核对 `git diff --cached --stat` 与 `git diff --cached`，确保只包含预期文件；工作区有其他改动时尤其要隔离提交范围。
+- 提交信息遵循 Conventional Commits：`<type>(<scope>): <imperative summary>`，scope 可省略；使用小写类型（如 `feat`、`fix`、`docs`、`test`、`refactor`、`chore`），摘要简短准确、使用祈使语气，例如 `docs: clarify agent git workflow`。不要使用 `update`、`misc` 等无法说明意图的消息。
 - 未经明确授权不要 `git reset --hard`、`git clean`、强推、变基或覆盖他人的提交；不要擅自推送远端。若工作区已有冲突或意外暂存内容，先说明并停下，不要用破坏性命令“修复”。
