@@ -1,6 +1,0 @@
-Metadata-Version: 2.4
-Name: ios-location-controller
-Version: 0.1.0
-Summary: Windows controller for iPhone location simulation in owned/test devices
-Requires-Python: >=3.11
-Requires-Dist: pymobiledevice3>=4.0.0
