@@ -16,21 +16,50 @@
 
 需要 Python 3.11+。安装项目依赖后，可运行 `ios-location-map` 或 `python -m ios_location_controller.web`，浏览器地址为 `http://127.0.0.1:8765`。Windows 的 `start-map.cmd` 与 Linux 的 `./start-map.sh` 可启动页面；Linux 可用 `./stop-server.sh` 停止。启动脚本依赖仓库根目录下已正确安装项目依赖的 `.venv`；虚拟环境不是项目源码的一部分，不应提交到 Git。
 
+### macOS
+
+下载 Mac ZIP 并解压到自己有写入权限的文件夹（例如“下载”或“应用程序”内的个人文件夹），双击 `启动 Route Studio.command`。首次运行会自动下载 uv 0.12.11、Python 3.11 和 `uv.lock` 中固定版本的依赖，然后打开浏览器；支持 Apple Silicon 与 Intel 的架构选择，首次安装需要联网。Python、依赖与下载缓存保存在解压目录的 `.runtime/` 和 `.venv/`，不需要 Homebrew 或管理员权限。Mac 入门步骤见 `Mac使用说明.txt`。
+
+如安装中断，可重新双击启动，或双击 `安装或修复 Route Studio.command` 重试。移动整个项目文件夹后，若环境无法运行，也请重新运行安装或修复入口；已安装的虚拟环境不应复制给他人。
+
+也可以自己安装 Python 3.11+，在终端进入项目目录，再执行：
+
+```bash
+python3 --version  # 需要 3.11 或更高版本
+python3 -m venv .venv
+.venv/bin/python -m pip install -e .
+chmod +x "启动 Route Studio.command"
+```
+
+系统自带的 Python 可能低于 3.11；请先安装满足版本要求的 Python。若使用 `uv`，可用 `uv venv --python 3.11 .venv` 和 `uv pip install --python .venv/bin/python -e .` 替代上面的环境创建与安装命令。
+
+完成首次安装后，在 Finder 中双击 `启动 Route Studio.command`。它会在终端运行后端、等待健康检查通过后打开浏览器；若服务已经运行，则直接打开页面。保持运行服务的终端窗口打开。结束时先在网页停止/断开手机，再回到终端按 `Control+C`。也可手动执行 `.venv/bin/python -m ios_location_controller.web`，再打开 `http://127.0.0.1:8765`。
+
+### Windows
+
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[test]"
 .\start-map.cmd
 ```
 
-Linux 环境可使用 `python3 -m venv .venv` 和 `./.venv/bin/python -m pip install -e ".[test]"` 准备依赖，再运行 `./start-map.sh`。Linux 连接 iPhone 还需要 `usbmuxd` 服务和 `libimobiledevice`；Windows 需要 Apple Mobile Device Support。
+### Linux
 
-页面使用随包提供的 Leaflet JS/CSS。OpenStreetMap 底图和地点搜索需要网络；底图不可用时仍可输入坐标、编辑路线和控制设备。
+Linux 环境可使用 `python3 -m venv .venv` 和 `./.venv/bin/python -m pip install -e .` 准备依赖，再运行 `./start-map.sh`。Linux 连接 iPhone 还需要 `usbmuxd` 服务和 `libimobiledevice`；Windows 需要 Apple Mobile Device Support。
+
+Python、`pymobiledevice3` 是后端运行依赖；`pytest` 和 Playwright 仅用于开发测试。能启动网页与能连接真机是不同条件，手机还需要满足下文对应平台的授权和连接要求。
+
+页面使用随包提供的 Leaflet JS/CSS。OpenStreetMap 底图和地点搜索需要网络；主底图加载失败时自动尝试 OpenStreetMap DE 备用底图，加载恢复后自动清除提示。两者都不可用时可点击“重试底图”，仍可输入坐标、编辑路线和控制设备。备用底图保持 WGS84 坐标，原生最高缩放级别为 18，级别 19 使用放大显示；地点搜索仍使用 Nominatim，不随底图切换。
 
 ## 路线与回放
 
 “布设路线”页可在地图上添加、拖动、删除节点，也可输入坐标、导入 GPX、撤销和导出 GPX 1.1。节点按顺序直线连接，不会自动沿道路规划。编辑草稿保存在当前浏览器的 `localStorage`，编辑本身不会向手机发送位置。
 
-“手机回放”页可载入草稿或导入 GPX。GPX 支持 `trkpt` 和 `rtept`，限制为 2 MB、最多 10000 个节点。连接手机且已有路线时会发送起点；只有点击“开始移动”才会沿路线播放。速度、配速、速度波动、横向波动、更新间隔、随机种子和循环开关可调；播放中参数锁定，暂停后可修改。轨迹是测试模拟，不代表真实人体运动。
+“手机回放”页可载入草稿或导入 GPX。GPX 支持 `trkpt` 和 `rtept`，限制为 2 MB、最多 10000 个节点。连接手机且已有路线时会发送起点；只有点击“开始移动”才会沿路线播放。速度、配速、速度波动、横向波动、每圈坐标点随机半径、更新间隔、随机种子和循环开关可调；播放中参数锁定，暂停后可修改。轨迹是测试模拟，不代表真实人体运动。
+
+“每圈坐标点随机半径”默认为 0（关闭），支持 0–50 米，建议从 1–3 米测试。每圈为路线节点生成圆形范围内的随机北/东偏移，在扰动后的节点间插值，并按扰动后的路线长度计算行进距离。首尾坐标相同的闭合路线沿用上一圈终点作为下一圈起点，避免交界跳点，其余节点重新生成；非闭合路线仍会从终点跳回起点。原始草稿和 GPX 不会被改写。该半径只约束节点偏移，与现有左右波动叠加后，中途采样点的偏移可能超过它。
+
+随机种子和坐标点随机半径在停止后重新开始时生效，暂停/继续不会重抽节点。相同种子、路线和参数可复现整次测试，各圈仍使用不同节点；想让下一次测试不同，可修改种子。命令行对应参数为 `--point-variation-m 2`，可与 `--loop --random-seed 42` 配合。
 
 - **清空路线（编辑页）**：只删除当前浏览器草稿，不影响已载入的回放路线或手机定位。
 - **停止并清除模拟**：停止播放并请求手机恢复真实定位，但保留已载入路线及会话文件，稍后仍可重播。

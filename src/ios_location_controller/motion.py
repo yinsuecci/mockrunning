@@ -25,6 +25,7 @@ class Settings:
     interval: float = 1.0
     speed_variation_pct: float = 10.0
     lateral_variation_m: float = 1.0
+    point_variation_m: float = 0.0
     variation_period: float = 12.0
     loop: bool = False
     random_seed: int = 42
@@ -36,6 +37,7 @@ class Settings:
         values = asdict(cls()) | data
         for key, low, high in [("speed_kmh", .1, 300), ("interval", .1, 10),
                                ("speed_variation_pct", 0, 80), ("lateral_variation_m", 0, 20),
+                               ("point_variation_m", 0, 50),
                                ("variation_period", 2, 120)]:
             value = float(values[key])
             if not math.isfinite(value) or not low <= value <= high:
@@ -58,6 +60,23 @@ class Motion:
         self.elapsed = 0.0
         self.laps = 0
         self.phase = random.Random(settings.random_seed).random() * math.tau
+        self._route_rng = random.Random(settings.random_seed ^ 0x9E3779B9)
+        self._point_variation_m = settings.point_variation_m
+        self._lap_points = None
+        self._new_lap()
+
+    @property
+    def start_point(self):
+        """The perturbed starting coordinate for the current lap."""
+        return self._lap_points[0]
+
+    def _new_lap(self):
+        previous_end = self._lap_points[-1] if self._lap_points else None
+        self._lap_points = perturb_route(self.points, self._point_variation_m,
+                                         self._route_rng, previous_end)
+        self.lengths = [distance_meters(a, b)
+                        for a, b in zip(self._lap_points, self._lap_points[1:])]
+        self.total = sum(self.lengths)
 
     def advance(self, dt, settings):
         self.elapsed += dt
@@ -66,20 +85,45 @@ class Motion:
         self.distance += speed / 3.6 * dt
         done = self.distance >= self.total and not settings.loop
         if settings.loop:
-            self.laps += int(self.distance / self.total)
-            self.distance %= self.total
+            while self.distance >= self.total:
+                self.distance -= self.total
+                self.laps += 1
+                self._new_lap()
         else:
             self.distance = min(self.distance, self.total)
         remaining = self.distance
         for index, length in enumerate(self.lengths):
             if remaining <= length and length > 0:
                 fraction = remaining / length
-                a, b = self.points[index:index + 2]
+                a, b = self._lap_points[index:index + 2]
                 point = interpolate(a, b, fraction)
-                # Taper at nodes so corners and endpoints remain on the route.
+                # Taper at the perturbed nodes so adjacent segments meet.
                 sway = settings.lateral_variation_m * math.sin(self.elapsed * math.tau / settings.variation_period + self.phase) * math.sin(math.pi * fraction)
                 bearing = bearing_radians(a, b)
                 point = offset_point(point, -math.sin(bearing) * sway, math.cos(bearing) * sway)
                 return point, speed, done
             remaining -= length
-        return self.points[-1], speed, done
+        return self._lap_points[-1], speed, done
+
+
+def perturb_route(points, radius_m, rng=None, previous_end=None):
+    """Return route points with independent, uniformly distributed offsets.
+
+    Offsets are sampled inside a circle of ``radius_m`` in local north/east
+    metres.  Keeping one perturbed set for a whole lap avoids point-to-point
+    teleporting while making repeated laps distinct.
+    """
+    if radius_m <= 0:
+        return list(points)
+    rng = rng or random.Random()
+    result = []
+    for point in points:
+        angle = rng.random() * math.tau
+        distance = radius_m * math.sqrt(rng.random())
+        result.append(offset_point(point, math.cos(angle) * distance,
+                                   math.sin(angle) * distance))
+    if previous_end is not None and distance_meters(points[0], points[-1]) < 1e-6:
+        # The end of this lap becomes the start of the next. It is allowed to
+        # differ from this lap's start, otherwise every lap repeats that anchor.
+        result[0] = previous_end
+    return result

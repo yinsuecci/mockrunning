@@ -122,7 +122,7 @@ class PlaybackController:
                     self.motion = None
                     self._save()
                     if self.device:
-                        await self._send(points[0])
+                        await self._send(Motion(points, self.settings).start_point)
                     self.state = "ready" if self.device else "idle"
                 elif action == "clear-route":
                     # Clear the simulated position before discarding the active route.
@@ -177,7 +177,7 @@ class PlaybackController:
                             self.real_current = None
                             self.wda_error = str(exc) or type(exc).__name__
                     if self.points:
-                        await self._send(self.points[0])
+                        await self._send(Motion(self.points, self.settings).start_point)
                     self.state = "ready"
                 elif action == "start":
                     if not self.device or not self.points:
@@ -185,7 +185,7 @@ class PlaybackController:
                     if self.state != "playing":
                         if self.state != "paused":
                             self.motion = Motion(self.points, self.settings)
-                            await self._send(self.points[0])
+                            await self._send(self.motion.start_point)
                         self.state = "playing"
                         self.pending_time = 0.0
                         self.last_tick = self.loop.time()

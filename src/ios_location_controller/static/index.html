@@ -4,13 +4,13 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Route Studio · iOS / Android 定位控制</title>
   <link rel="stylesheet" href="/static/leaflet.css"><link rel="stylesheet" href="/static/app.css">
-  <script defer src="/static/leaflet.js"></script><script defer src="/static/app.js"></script>
+  <script defer src="/static/leaflet.js"></script><script defer src="/static/basemap.js"></script><script defer src="/static/app.js"></script>
 </head>
 <body>
   <header><div><span class="eyebrow">LOCAL / iOS LOCATION CONTROLLER</span><h1>Route Studio<span>路线工作台</span></h1></div><span id="service" class="badge">连接本地服务…</span></header>
   <nav aria-label="工作流程"><button id="tab-editor" class="active" aria-selected="true">01 <b>布设路线</b><small>编辑节点 · 导出 GPX</small></button><button id="tab-player" aria-selected="false">02 <b>手机回放</b><small>导入路线 · 设置参数 · 控制定位</small></button></nav>
   <main>
-    <section class="map-wrap"><div id="map" aria-label="路线地图"></div><div class="map-note" id="map-note">单击添加节点 · 拖动节点调整 · 节点弹窗可删除</div><div id="map-warning" role="status" hidden></div><div class="map-tools"><button id="fit">查看整条路线</button><button id="locate-phone" title="定位到最近成功发送给手机的模拟坐标">定位到手机</button><label><input type="checkbox" id="follow">跟随模拟位置</label></div></section>
+    <section class="map-wrap"><div id="map" aria-label="路线地图"></div><div class="map-note" id="map-note">单击添加节点 · 拖动节点调整 · 节点弹窗可删除</div><div id="map-warning" role="status" hidden></div><div class="map-tools"><button id="fit">查看整条路线</button><button id="locate-phone" title="定位到最近成功发送给手机的模拟坐标">定位到手机</button><button id="retry-map" type="button" hidden>重试底图</button><label><input type="checkbox" id="follow">跟随模拟位置</label></div></section>
     <aside>
       <section id="editor-panel">
         <div class="section-heading"><span>01 / ROUTE BUILDER</span><h2>在地图上布设路线</h2><p>每次点击添加一个运行节点，按编号顺序连线。编辑操作不会改变手机定位。</p></div>
@@ -47,12 +47,14 @@
         <form id="settings"><fieldset id="parameters"><legend>运动参数</legend>
           <div class="row"><label>速度 km/h<input name="speed_kmh" id="speed" type="number" min="0.1" max="300" step="any" value="5" required></label><label>配速 min/km<input id="pace" type="number" min="0.2" max="600" step="any" value="12" required></label></div>
           <div class="row"><label>速度波动 ±%<input name="speed_variation_pct" type="number" min="0" max="80" step="any" value="10" required></label><label>左右波动 m<input name="lateral_variation_m" type="number" min="0" max="20" step="any" value="1" required></label></div>
+          <label>每圈坐标点随机半径 m<input name="point_variation_m" type="number" min="0" max="50" step="any" value="0" required></label>
+          <small>0 为关闭；建议从 1–3 米测试。每圈更新节点，闭合路线跨圈连续；与左右波动叠加。</small>
           <div class="row"><label>波动周期 s<input name="variation_period" type="number" min="2" max="120" step="any" value="12" required></label><label>定位更新间隔 s<input name="interval" type="number" min="0.1" max="10" step="any" value="1" required></label></div>
           <label>随机种子（相同参数可复现）<input name="random_seed" type="number" min="0" max="2147483647" step="1" value="42" required></label>
           <label class="check"><input name="loop" type="checkbox">循环路线（终点返回起点，非闭合路线会跳转）</label>
           <button type="submit" id="apply">保存参数</button>
         </fieldset></form>
-        <p class="hint">运动中参数锁定；暂停后可调整并继续。随机种子在重新开始时生效。波动仅用于定位测试，不代表真实人体运动。</p>
+        <p class="hint">运动中参数锁定；暂停后可调整并继续。随机种子和坐标点随机半径须停止后重新开始才生效。波动仅用于定位测试，不代表真实人体运动。</p>
         <div class="transport"><button id="start" class="primary">开始移动</button><button id="pause">暂停</button><button id="stop" class="danger">停止并清除模拟</button></div>
         <div class="telemetry"><div class="row"><b id="play-state">未开始</b><span id="live-speed">0 km/h</span></div><progress id="progress" max="100" value="0"></progress><span id="position">尚未发送模拟坐标</span><small id="progress-text">0 m · 0 s</small></div>
         <p class="hint">橙色圆点显示最近成功发送的模拟坐标，不是从手机读回的 GPS。完成后停留终点，停止或断开会请求恢复真实定位。</p>

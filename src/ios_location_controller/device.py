@@ -14,6 +14,7 @@ from contextlib import AsyncExitStack
 from collections.abc import Awaitable, Callable
 
 from .gpx import Point, bearing_radians, distance_meters, interpolate, offset_point
+from .motion import perturb_route
 
 log = logging.getLogger(__name__)
 
@@ -129,6 +130,7 @@ class LocationDevice:
         random_seed: int | None = None,
         on_point: Callable[[Point], Awaitable[None]] | None = None,
         pause_event: asyncio.Event | None = None,
+        point_variation_m: float = 0.0,
     ) -> None:
         if not points or interval <= 0:
             raise ValueError("Route must contain points and interval must be positive")
@@ -138,14 +140,21 @@ class LocationDevice:
             raise ValueError("Speed variation must be between 0 and 100 percent")
         if lateral_variation_m < 0:
             raise ValueError("Lateral variation must not be negative")
+        if not 0 <= point_variation_m <= 50:
+            raise ValueError("Point variation must be between 0 and 50 meters")
+        # Keep route jitter and speed/lateral variation on separate streams so
+        # enabling point variation does not change existing motion sequences.
         rng = random.Random(random_seed)
+        route_rng = random.Random(None if random_seed is None else random_seed ^ 0x9E3779B9)
+        previous_end = None
         while True:
             if pause_event is not None:
                 await pause_event.wait()
-            await self.set_point(points[0])
+            lap_points = perturb_route(points, point_variation_m, route_rng, previous_end)
+            await self.set_point(lap_points[0])
             if on_point is not None:
-                await on_point(points[0])
-            for segment, (start, end) in enumerate(zip(points, points[1:]), 1):
+                await on_point(lap_points[0])
+            for segment, (start, end) in enumerate(zip(lap_points, lap_points[1:]), 1):
                 if speed_kmh is None:
                     if pause_event is not None:
                         await pause_event.wait()
@@ -179,6 +188,7 @@ class LocationDevice:
                 log.debug("Segment %.1f m at %.2f km/h completed in %.2f s", segment_distance, segment_speed, duration)
             if not loop:
                 return
+            previous_end = lap_points[-1]
 
     async def clear(self) -> None:
         if self._simulation is not None:

@@ -1,6 +1,7 @@
 # Python environments and generated files
 .venv/
 .venv.*/
+.runtime/
 __pycache__/
 *.py[cod]
 *$py.class
@@ -15,6 +16,8 @@ dist/
 *.log
 artifacts/
 backups/
+.ios-location-controller/
+session.json
 
 # Local editor and OS metadata
 .idea/

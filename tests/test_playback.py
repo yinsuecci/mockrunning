@@ -1,7 +1,16 @@
 import asyncio
+import json
 import time
 import pytest
 from ios_location_controller.playback import PlaybackController
+
+@pytest.fixture(autouse=True)
+def isolate_device_discovery(monkeypatch):
+    # These tests use fake adapters. Keep real usbmux discovery and its
+    # external service cancellation races out of lifecycle assertions.
+    async def parked_discovery(self):
+        await asyncio.Future()
+    monkeypatch.setattr(PlaybackController, '_discover', parked_discovery)
 
 class FakeDevice:
     sent=[]
@@ -42,6 +51,30 @@ def test_lifecycle_and_persistence(tmp_path):
         assert restored.status()['state']=='idle'
         assert restored.status()['current'] is None
     finally: restored.close()
+
+
+def test_point_variation_is_saved_and_sent_at_start(tmp_path):
+    from ios_location_controller.gpx import Point, distance_meters
+    path = tmp_path / 'session.json'
+    controller = PlaybackController(path, FakeDevice)
+    route = {'name':'jitter', 'points':[{'lat':31.23,'lng':121.47},
+                                      {'lat':31.24,'lng':121.48}]}
+    try:
+        controller.call('settings', {'point_variation_m':3, 'interval':10})
+        controller.call('route', route)
+        controller.call('connect')
+        current = controller.status()['current']
+        deviation = distance_meters(Point(current['lat'], current['lng']), Point(31.23,121.47))
+        assert 0 < deviation <= 3.001
+        assert controller.call('start')['current'] == current
+        controller.call('pause')
+        assert controller.call('start')['current'] == current
+        assert controller.status()['route'] == route
+    finally:
+        controller.close()
+    saved = json.loads(path.read_text())
+    assert saved['settings']['point_variation_m'] == 3
+    assert saved['points'] == route['points']
 
 
 def test_platform_options_and_failed_cleanup(tmp_path):

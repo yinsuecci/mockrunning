@@ -1,0 +1,5 @@
+include README.md THIRD_PARTY_NOTICES.md
+include uv.lock Mac使用说明.txt
+include tests/test_basemap.cjs
+include *.command *.sh *.cmd *.ps1
+recursive-include routes *.gpx

@@ -60,6 +60,8 @@ def build_parser() -> argparse.ArgumentParser:
     play.add_argument("--speed-kmh", type=positive_float, help="Travel speed along the route in km/h")
     play.add_argument("--speed-variation-pct", type=percentage, default=0.0, help="Random speed variation per segment")
     play.add_argument("--lateral-variation-m", type=nonnegative_float, default=0.0, help="Left/right sway amplitude in meters")
+    play.add_argument("--point-variation-m", type=nonnegative_float, default=0.0,
+                      help="Per-route-point random variation radius in meters")
     play.add_argument("--random-seed", type=int, help="Optional seed for repeatable movement variation")
     play.add_argument("--loop", action="store_true")
     play.add_argument("--android-provider", choices=["gps", "network", "both"], default="gps")
@@ -138,6 +140,7 @@ async def run(args: argparse.Namespace) -> None:
                 args.speed_variation_pct,
                 args.lateral_variation_m,
                 args.random_seed,
+                point_variation_m=args.point_variation_m,
             )
     finally:
         await device.close()
@@ -145,7 +148,14 @@ async def run(args: argparse.Namespace) -> None:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     try:
-        asyncio.run(run(build_parser().parse_args()))
+        args = build_parser().parse_args()
+        if args.command == "map":
+            # serve_forever is synchronous. Running it inside asyncio.run
+            # prevents the first Ctrl+C cancellation from being processed.
+            from .web import serve
+            serve(args.host, args.port)
+        else:
+            asyncio.run(run(args))
     except KeyboardInterrupt:
         print("\nStopped; cleanup was attempted.")
 

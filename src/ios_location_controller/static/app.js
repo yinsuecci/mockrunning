@@ -279,8 +279,7 @@ try {
 } catch { message('旧草稿无法读取，已打开空白编辑器。','error'); }
 try {
   map=L.map('map',{worldCopyJump:true}).setView([31.2304,121.4737],15);
-  const tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
-  tiles.on('tileerror',()=>{$('map-warning').hidden=false;$('map-warning').textContent='底图网络不可用；节点编辑、坐标输入和回放仍可使用。';});
+  createBasemap(map, $('map-warning'), $('retry-map'));
   routeLine=L.polyline([],{color:'#d55b32',weight:4}).addTo(map);
   liveMarker=L.circleMarker([0,0],{radius:15,color:'#d55b32',weight:3,fillColor:'#d55b32',fillOpacity:.35,interactive:false});
   map.on('click', e=>{if(mode==='editor'){try{const p=e.latlng.wrap();addNode(p.lat,p.lng);}catch(error){message(error.message,'error');}}});
