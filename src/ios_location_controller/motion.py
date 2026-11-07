@@ -49,6 +49,24 @@ class Settings:
         return cls(**values)
 
 
+class _LateralNoise:
+    def __init__(self, seed):
+        self.rng = random.Random(f"lateral:{seed}")
+        self.start = 0.0
+        self.end = self.rng.uniform(0.35, 0.9)
+        self.left, self.right = 0.0, self.rng.uniform(-1, 1)
+
+    def sample(self, time):
+        while time >= self.end:
+            self.start = self.end
+            self.end += self.rng.uniform(0.35, 0.9)
+            self.left, self.right = self.right, self.rng.uniform(-1, 1)
+        fraction = (time - self.start) / (self.end - self.start)
+        # Smoothstep joins random targets without a sharp change in slope.
+        blend = fraction * fraction * (3 - 2 * fraction)
+        return self.left + (self.right - self.left) * blend
+
+
 class Motion:
     def __init__(self, points, settings):
         self.points = points
@@ -58,9 +76,12 @@ class Motion:
         self.elapsed = 0.0
         self.laps = 0
         self.phase = random.Random(settings.random_seed).random() * math.tau
+        self.lateral = _LateralNoise(settings.random_seed)
+        self.lateral_time = 0.0
 
     def advance(self, dt, settings):
         self.elapsed += dt
+        self.lateral_time += dt / settings.variation_period
         wave = math.sin(self.elapsed * math.tau / settings.variation_period + self.phase)
         speed = settings.speed_kmh * (1 + settings.speed_variation_pct / 100 * wave)
         self.distance += speed / 3.6 * dt
@@ -77,9 +98,10 @@ class Motion:
                 a, b = self.points[index:index + 2]
                 point = interpolate(a, b, fraction)
                 # Taper at nodes so corners and endpoints remain on the route.
-                sway = settings.lateral_variation_m * math.sin(self.elapsed * math.tau / settings.variation_period + self.phase) * math.sin(math.pi * fraction)
-                bearing = bearing_radians(a, b)
-                point = offset_point(point, -math.sin(bearing) * sway, math.cos(bearing) * sway)
+                if settings.lateral_variation_m and 0 < fraction < 1:
+                    sway = settings.lateral_variation_m * self.lateral.sample(self.lateral_time) * math.sin(math.pi * fraction)
+                    bearing = bearing_radians(a, b)
+                    point = offset_point(point, -math.sin(bearing) * sway, math.cos(bearing) * sway)
                 return point, speed, done
             remaining -= length
         return self.points[-1], speed, done
