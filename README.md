@@ -1,18 +1,57 @@
 # Route Studio
 
+**简体中文** · [English](README.en.md)
+
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](#quickstart)
+[![iOS and Android](https://img.shields.io/badge/Test%20devices-iOS%20%7C%20Android-2E7D64)](#连接-iphone)
+[![GitHub stars](https://img.shields.io/github/stars/yinsuecci/mockrunning?style=flat&logo=github)](https://github.com/yinsuecci/mockrunning/stargazers)
+[![Download source ZIP](https://img.shields.io/badge/Download-Source%20ZIP-2563EB)](https://github.com/yinsuecci/mockrunning/archive/refs/heads/main.zip)
+
+📣 **分享项目**
+[![Share on X](https://img.shields.io/badge/X-Share-black?logo=x&logoColor=white)](https://x.com/intent/post?url=https%3A%2F%2Fgithub.com%2Fyinsuecci%2Fmockrunning)
+[![Share on Telegram](https://img.shields.io/badge/Telegram-Share-26A5E4?logo=telegram&logoColor=white)](https://t.me/share/url?url=https%3A%2F%2Fgithub.com%2Fyinsuecci%2Fmockrunning)
+
+## 🧭 项目目的
+
 本地运行的 iPhone / Android 路线编辑与模拟定位测试工具。浏览器中布设或导入 GPX 路线，连接已授权的测试手机后，可以设置起点、沿路线播放、暂停和清除模拟定位。Web 服务仅监听本机回环地址；“无线连接”指电脑与手机之间的连接，不会把控制接口开放到局域网。
 
-## 本次更新（2026-09-30）
+## 📚 目录
 
-- Android 默认只替换 GPS，可选择仅 network 或双源；GPS 与 network 的水平精度 hAcc 分别可配置，network 更新间隔独立，不再将两个源统一写死为 3 米精度。
-- 网页与命令行接入 Android 测试配置，页面显示各源最近成功注入的坐标、精度以及接口能力限制。
-- 修复 network 更新被间隔限制跳过时，页面仍更新“已发送位置”的问题；手动切换、路线起点和终点立即发送，清理后重播会重置更新节奏。
-- 新增 Android AVD 专用命令：GPS fix 的卫星数量参数，以及陀螺仪、加速度计、磁场三轴值的临时注入。传感器测试结束、取消或发送失败时尝试恢复原值，恢复失败会明确报错。
-- 增加有限数值、参数范围、平台和模拟器目标校验，并补充恢复、失败处理、双源更新及浏览器表单回归测试。
+- [下载](#download)
+- [Quickstart](#quickstart)
+- [路线与回放](#路线与回放)
+- [连接 iPhone](#连接-iphone) · [连接 Android](#连接-android)
+- [能力边界](#能力边界) · [命令行](#命令行) · [验证](#验证)
 
-本次验证：87 项自动测试通过，浏览器连接表单与移动端布局测试通过；没有进行真机或实际 AVD 验证。**本次未实现 root 后端、隐藏 mock 标记、iOS hAcc 设置、真机传感器注入或完整 GNSS 原始数据模拟。**
+<a name="download"></a>
 
-## 启动与依赖
+## 📦 下载
+
+[下载源码 ZIP](https://github.com/yinsuecci/mockrunning/archive/refs/heads/main.zip) · [查看 GitHub Releases](https://github.com/yinsuecci/mockrunning/releases)
+
+源码 ZIP 不是安装包。也可以用 Git 获取源码：
+
+```bash
+git clone https://github.com/yinsuecci/mockrunning.git
+cd mockrunning
+```
+
+<a name="quickstart"></a>
+
+## 🚀 Quickstart
+
+需要 Python 3.11+。在源码目录中安装并启动：
+
+```bash
+python -m pip install -e .
+ios-location-map
+```
+
+1. 浏览器打开 [127.0.0.1:8765](http://127.0.0.1:8765)。
+2. 在「手机回放」连接已授权的 [iPhone](#连接-iphone) 或 [Android](#连接-android)，导入 [示例路线](routes/sample.gpx)。也可在「布设路线」绘制路线后载入回放。
+3. 点击「开始移动」。完成后用「停止并清除模拟」请求恢复正常定位。
+
+### 启动脚本与平台依赖
 
 需要 Python 3.11+。安装项目依赖后，可运行 `ios-location-map` 或 `python -m ios_location_controller.web`，浏览器地址为 `http://127.0.0.1:8765`。Windows 的 `start-map.cmd` 与 Linux 的 `./start-map.sh` 可启动页面；Linux 可用 `./stop-server.sh` 停止。启动脚本依赖仓库根目录下已正确安装项目依赖的 `.venv`；虚拟环境不是项目源码的一部分，不应提交到 Git。
 
@@ -40,6 +79,8 @@ Linux 环境可使用 `python3 -m venv .venv` 和 `./.venv/bin/python -m pip ins
 回放页还可搜索 OpenStreetMap Nominatim 地点并切换到选中坐标，不会修改路线。播放时须先暂停或停止。橙色标记默认显示最近成功发送的模拟位置，并非手机读回的真实 GPS。路线及参数保存在 `~/.ios-location-controller/session.json`；服务重启后会恢复数据，但不会自动连接设备或开始播放。可用 `IOS_LOCATION_STATE` 指定其他状态文件。
 
 网页回放的横向波动在不等间隔的随机目标之间平滑过渡，避免长直线上重复出现固定周期的波浪。“波动周期”仍控制速度波动周期，也作为横向变化的时间尺度；相同路线、种子与回放采样可复现。偏移不超过设定幅度，在路线节点处归零；设为 `0` 则只沿原路线回放。
+
+网页回放还可按设定步频估算「模拟步数」（默认 160 步/分钟，0 停止累计）。只累计有效回放时间，暂停不计步，修改步频不重算已有步数；停止或重新开始会清零。它不读取或写入手机计步，不影响第三方应用。
 
 ## 连接 iPhone
 
