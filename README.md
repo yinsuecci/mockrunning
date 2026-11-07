@@ -39,6 +39,8 @@ Linux 环境可使用 `python3 -m venv .venv` 和 `./.venv/bin/python -m pip ins
 
 回放页还可搜索 OpenStreetMap Nominatim 地点并切换到选中坐标，不会修改路线。播放时须先暂停或停止。橙色标记默认显示最近成功发送的模拟位置，并非手机读回的真实 GPS。路线及参数保存在 `~/.ios-location-controller/session.json`；服务重启后会恢复数据，但不会自动连接设备或开始播放。可用 `IOS_LOCATION_STATE` 指定其他状态文件。
 
+网页回放的横向波动在不等间隔的随机目标之间平滑过渡，避免长直线上重复出现固定周期的波浪。“波动周期”仍控制速度波动周期，也作为横向变化的时间尺度；相同路线、种子与回放采样可复现。偏移不超过设定幅度，在路线节点处归零；设为 `0` 则只沿原路线回放。
+
 ## 连接 iPhone
 
 需要已信任电脑、启用开发者模式，并具备可用的 Apple Mobile Device Support 和开发者服务。iOS 17.4+ 默认使用 `pymobiledevice3` 的进程内 RSD 隧道；旧系统与 iOS 17.0–17.3 的兼容性未经过本项目真机覆盖。
